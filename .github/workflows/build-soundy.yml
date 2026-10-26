@@ -1,0 +1,40 @@
+name: Build Soundy Plugin
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build soundy-plugin from upstream commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout soundy upstream
+        uses: actions/checkout@v4
+        with:
+          repository: lowkwrs/soundy
+          ref: e2c5da8e96661d2a9eb96ee53e3d5b95903bc194
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build with Gradle
+        run: |
+          chmod +x gradlew
+          ./gradlew build
+
+      - name: Check artifact and SHA-256
+        run: |
+          ls -lh plugin/build/libs/
+          sha256sum plugin/build/libs/*.jar
+
+      - name: Upload soundy-plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundy-plugin-1.1.0
+          path: plugin/build/libs/soundy-plugin-1.1.0.jar
