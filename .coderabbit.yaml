@@ -1,0 +1,107 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# Configuração do CodeRabbit do EmpireMuse-LL-binaries (arquivo por repositório; não herda da organização).
+# Problema que resolve: este repositório só tem README, SHA256SUMS e workflows; o risco é hash ou versão divergente da
+# release publicada. Custo: 1 arquivo a manter. Revisão desta configuração: 2027-01-24.
+
+language: pt-BR
+tone_instructions: >-
+  Revisor técnico objetivo, em pt-BR. Foco em bugs, segurança e regressões. Cite arquivo:linha, agrupe repetições
+  em um só comentário e não elogie.
+inheritance: false
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: true
+  changed_files_summary: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  poem: false
+  in_progress_fortune: false
+  suggested_reviewers: false
+  suggested_labels: false
+  auto_apply_labels: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "WIP"
+      - "[skip review]"
+
+  path_filters:
+    - "!**/*.jar"
+
+  path_instructions:
+    - path: "**/*.{md,MD}"
+      instructions: |
+        - Português do Brasil com acentuação correta.
+        - Todo hash SHA-256, versão e commit citados precisam bater com o `SHA256SUMS` e com a release publicada; aponte
+          qualquer divergência. Confira também a tabela de componentes (versão, origem e licença de cada arquivo).
+    - path: "SHA256SUMS"
+      instructions: |
+        - Um hash por artefato da release, no formato `sha256sum -c`; nunca remova ou altere o hash de uma release já
+          publicada (releases são imutáveis; mudança exige nova tag).
+    - path: ".github/workflows/**"
+      instructions: |
+        - Actions fixadas por SHA completo com comentário da versão, `permissions` mínimas e nenhum
+          `pull_request_target`. O build do Soundy parte do commit fixado de `lowkwrs/soundy`, sem JitPack nem forks.
+
+  pre_merge_checks:
+    docstrings:
+      mode: off
+    title:
+      mode: warning
+      requirements: >-
+        Conventional Commits: tipo (feat, fix, refactor, docs, test, chore, perf, ci), escopo opcional e descrição curta.
+    description:
+      mode: warning
+    issue_assessment:
+      mode: off
+    custom_checks:
+      - name: "Sem segredos nem detalhe explorável"
+        mode: error
+        instructions: |
+          Falha se o diff adiciona a um arquivo público um segredo real (token, chave, senha, webhook) ou o passo a
+          passo explorável de uma vulnerabilidade ainda não corrigida.
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    simplify:
+      enabled: false
+
+  tools:
+    actionlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    zizmor:
+      enabled: true
+    github-checks:
+      enabled: true
+    languagetool:
+      enabled: false
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: local
+  issues:
+    scope: local
+  pull_requests:
+    scope: local
