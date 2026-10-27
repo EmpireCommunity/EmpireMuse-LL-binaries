@@ -92,6 +92,7 @@ jobs:
             --write-verification-metadata sha256 clean :lavalink:jar
           ls -l lavalink/build/libs/
           sha256sum lavalink/build/libs/lavalink-2.7.1.jar | tee "$RUNNER_TEMP/build1.sha256"
+          mkdir -p "$RUNNER_TEMP/jar1" && cp lavalink/build/libs/lavalink-2.7.1.jar "$RUNNER_TEMP/jar1/"
 
       - name: Build 2 - refazer com a verificação de dependências estrita
         working-directory: lyrics
@@ -102,7 +103,33 @@ jobs:
             --dependency-verification strict clean :lavalink:jar
           ls -l lavalink/build/libs/
           sha256sum lavalink/build/libs/lavalink-2.7.1.jar | tee "$RUNNER_TEMP/build2.sha256"
-          diff "$RUNNER_TEMP/build1.sha256" "$RUNNER_TEMP/build2.sha256"
+          mkdir -p "$RUNNER_TEMP/jar2" && cp lavalink/build/libs/lavalink-2.7.1.jar "$RUNNER_TEMP/jar2/"
+
+      - name: Comparar as duas construções (hash e conteúdo)
+        run: |
+          if diff "$RUNNER_TEMP/build1.sha256" "$RUNNER_TEMP/build2.sha256"; then
+            echo "Os dois JARs têm o mesmo SHA-256."
+            exit 0
+          fi
+          echo "::warning::Os SHA-256 diferem; comparando o conteúdo descompactado."
+          mkdir -p "$RUNNER_TEMP/x1" "$RUNNER_TEMP/x2"
+          unzip -q "$RUNNER_TEMP/jar1/lavalink-2.7.1.jar" -d "$RUNNER_TEMP/x1"
+          unzip -q "$RUNNER_TEMP/jar2/lavalink-2.7.1.jar" -d "$RUNNER_TEMP/x2"
+          unzip -lv "$RUNNER_TEMP/jar1/lavalink-2.7.1.jar" | awk '{ $5 = ""; print }' > "$RUNNER_TEMP/lv1.txt" || true
+          unzip -lv "$RUNNER_TEMP/jar2/lavalink-2.7.1.jar" | awk '{ $5 = ""; print }' > "$RUNNER_TEMP/lv2.txt" || true
+          diff "$RUNNER_TEMP/lv1.txt" "$RUNNER_TEMP/lv2.txt" || true
+          diff -r "$RUNNER_TEMP/x1" "$RUNNER_TEMP/x2" || true
+          exit 1
+
+      - name: Guardar os dois JARs para inspeção
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lyrics-plugin-comparacao
+          path: |
+            ${{ runner.temp }}/jar1/lavalink-2.7.1.jar
+            ${{ runner.temp }}/jar2/lavalink-2.7.1.jar
+          if-no-files-found: warn
 
       - name: Check artifact and SHA-256
         working-directory: lyrics
