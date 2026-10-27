@@ -76,6 +76,15 @@ jobs:
                   preserveFileTimestamps = false
                   reproducibleFileOrder = true
               }
+              // O plugin do Lavalink grava o .properties com java.util.Properties.store, que põe a data do build na 1ª linha
+              // (comentário #). Sem essa linha o JAR sai idêntico bit a bit; o conteúdo útil do arquivo não muda.
+              tasks.matching { it.name == 'generatePluginProperties' }.configureEach { t ->
+                  t.doLast {
+                      t.outputs.files.asFileTree.files.findAll { it.name.endsWith('.properties') }.each { f ->
+                          f.text = f.readLines('UTF-8').findAll { !it.startsWith('#') }.join('\n') + '\n'
+                      }
+                  }
+              }
               // O módulo lavalink declara o jitpack.io; o build tem de fechar sem ele (nenhuma dependência de lá).
               afterEvaluate {
                   repositories.removeAll { it instanceof MavenArtifactRepository && it.url.host == 'jitpack.io' }
