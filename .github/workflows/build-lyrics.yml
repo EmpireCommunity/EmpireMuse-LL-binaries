@@ -19,8 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      # Commit da tag anotada 2.7.1 (objeto eed2813faff0ff6baf36630d27f933ed9666ddb1).
-      LYRICS_COMMIT: 6482f213af9e9dcac8b851f9d719329b9af8ab43
+      # A tag anotada 2.7.1 (objeto eed2813faff0ff6baf36630d27f933ed9666ddb1) aponta para 6482f213af9e9dcac8b851f9d719329b9af8ab43,
+      # que não compila (esqueceu protocol/Protocol.kt). O mantenedor corrigiu 7 minutos depois no commit abaixo, sem mover a tag.
+      # Os dois commits só diferem em Protocol.kt (conferido no passo "Conferir o commit").
+      LYRICS_COMMIT: d0dfbb1385f528a335460d16c2dd9023de70baf5
+      LYRICS_TAG_COMMIT: 6482f213af9e9dcac8b851f9d719329b9af8ab43
       # SHA-256 oficial do gradle-8.13-bin.zip, copiado de https://gradle.org/release-checksums/ e conferido contra o zip.
       # Literal de propósito: baixá-lo de services.gradle.org em runtime seria confiar na mesma origem do zip.
       GRADLE_DISTRIBUTION_SHA256: 20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78
@@ -29,7 +32,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: DRSchlaubi/lyrics.kt
-          ref: 6482f213af9e9dcac8b851f9d719329b9af8ab43
+          ref: d0dfbb1385f528a335460d16c2dd9023de70baf5
           path: lyrics
           persist-credentials: false
 
@@ -38,6 +41,10 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "${LYRICS_COMMIT}"
           grep -qx '    version = "2.7.1"' build.gradle.kts
+          # Mesmo conteúdo da tag 2.7.1, menos a linha que ela esqueceu: só protocol/.../Protocol.kt pode diferir.
+          git fetch --quiet --depth=1 origin "${LYRICS_TAG_COMMIT}"
+          git diff --stat "${LYRICS_TAG_COMMIT}" HEAD
+          test "$(git diff --name-only "${LYRICS_TAG_COMMIT}" HEAD)" = "protocol/src/commonMain/kotlin/Protocol.kt"
 
       - name: Validar o gradle-wrapper.jar
         uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
