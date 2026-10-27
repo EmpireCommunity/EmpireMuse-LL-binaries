@@ -44,7 +44,13 @@ jobs:
           # Mesmo conteúdo da tag 2.7.1, menos a linha que ela esqueceu: só protocol/.../Protocol.kt pode diferir.
           git fetch --quiet --depth=1 origin "${LYRICS_TAG_COMMIT}"
           git diff --stat "${LYRICS_TAG_COMMIT}" HEAD
+          # Fail-closed: 1 arquivo, 1 linha (a linha 74, que ganha o "?"), nada mais.
           test "$(git diff --name-only "${LYRICS_TAG_COMMIT}" HEAD)" = "protocol/src/commonMain/kotlin/Protocol.kt"
+          test "$(git diff --numstat "${LYRICS_TAG_COMMIT}" HEAD)" = "$(printf '1\t1\tprotocol/src/commonMain/kotlin/Protocol.kt')"
+          git diff -U0 "${LYRICS_TAG_COMMIT}" HEAD > "$RUNNER_TEMP/delta.diff"
+          grep -q '^@@ -74 +74 @@' "$RUNNER_TEMP/delta.diff"
+          grep -qxF -- '-        val range: SerializableLongRange' "$RUNNER_TEMP/delta.diff"
+          grep -qxF -- '+        val range: SerializableLongRange?' "$RUNNER_TEMP/delta.diff"
 
       - name: Validar o gradle-wrapper.jar
         uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
