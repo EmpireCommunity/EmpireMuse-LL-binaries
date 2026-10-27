@@ -1,0 +1,121 @@
+name: Build Lyrics Plugin
+
+# Compila o plugin de letras (lavalink-2.7.1.jar) a partir do commit da tag 2.7.1 de DRSchlaubi/lyrics.kt.
+# Sem release aqui: a release é manual, depois da auditoria. Nada deste job usa segredo.
+
+on:
+  workflow_dispatch:
+  # Roda no PR que mexe neste arquivo (um workflow_dispatch só existe depois do merge na main).
+  pull_request:
+    paths:
+      - .github/workflows/build-lyrics.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build lavalink-2.7.1.jar from upstream commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Commit da tag anotada 2.7.1 (objeto eed2813faff0ff6baf36630d27f933ed9666ddb1).
+      LYRICS_COMMIT: 6482f213af9e9dcac8b851f9d719329b9af8ab43
+      # SHA-256 oficial do gradle-8.13-bin.zip, copiado de https://gradle.org/release-checksums/ e conferido contra o zip.
+      # Literal de propósito: baixá-lo de services.gradle.org em runtime seria confiar na mesma origem do zip.
+      GRADLE_DISTRIBUTION_SHA256: 20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78
+    steps:
+      - name: Checkout lyrics.kt upstream
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: DRSchlaubi/lyrics.kt
+          ref: 6482f213af9e9dcac8b851f9d719329b9af8ab43
+          path: lyrics
+          persist-credentials: false
+
+      - name: Conferir o commit e a versão do plugin
+        working-directory: lyrics
+        run: |
+          test "$(git rev-parse HEAD)" = "${LYRICS_COMMIT}"
+          grep -qx '    version = "2.7.1"' build.gradle.kts
+
+      - name: Validar o gradle-wrapper.jar
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Fixar o SHA-256 da distribuição do Gradle
+        working-directory: lyrics
+        run: |
+          props=gradle/wrapper/gradle-wrapper.properties
+          if grep -q '^distributionSha256Sum=' "$props"; then
+            echo "::error::O wrapper já define distributionSha256Sum; revise antes de continuar."
+            exit 1
+          fi
+          grep -qxF 'distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip' "$props"
+          printf '\ndistributionSha256Sum=%s\n' "${GRADLE_DISTRIBUTION_SHA256}" >> "$props"
+          cat "$props"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Init script do Gradle (JAR reprodutível, sem JitPack)
+        run: |
+          cat > "$RUNNER_TEMP/repro.init.gradle" <<'GRADLE'
+          allprojects {
+              // JAR reprodutível: sem data nas entradas e com ordem fixa.
+              tasks.withType(AbstractArchiveTask).configureEach {
+                  preserveFileTimestamps = false
+                  reproducibleFileOrder = true
+              }
+              // O módulo lavalink declara o jitpack.io; o build tem de fechar sem ele (nenhuma dependência de lá).
+              afterEvaluate {
+                  repositories.removeAll { it instanceof MavenArtifactRepository && it.url.host == 'jitpack.io' }
+              }
+          }
+          GRADLE
+
+      - name: Build 1 - gerar o verification-metadata (sha256)
+        working-directory: lyrics
+        run: |
+          ./gradlew --no-daemon --no-build-cache --console=plain \
+            -Porg.gradle.java.installations.auto-download=false \
+            -I "$RUNNER_TEMP/repro.init.gradle" \
+            --write-verification-metadata sha256 clean :lavalink:jar
+          ls -l lavalink/build/libs/
+          sha256sum lavalink/build/libs/lavalink-2.7.1.jar | tee "$RUNNER_TEMP/build1.sha256"
+
+      - name: Build 2 - refazer com a verificação de dependências estrita
+        working-directory: lyrics
+        run: |
+          ./gradlew --no-daemon --no-build-cache --console=plain \
+            -Porg.gradle.java.installations.auto-download=false \
+            -I "$RUNNER_TEMP/repro.init.gradle" \
+            --dependency-verification strict clean :lavalink:jar
+          ls -l lavalink/build/libs/
+          sha256sum lavalink/build/libs/lavalink-2.7.1.jar | tee "$RUNNER_TEMP/build2.sha256"
+          diff "$RUNNER_TEMP/build1.sha256" "$RUNNER_TEMP/build2.sha256"
+
+      - name: Check artifact and SHA-256
+        working-directory: lyrics
+        run: |
+          mkdir -p "$RUNNER_TEMP/saida"
+          cp lavalink/build/libs/lavalink-2.7.1.jar gradle/verification-metadata.xml "$RUNNER_TEMP/saida/"
+          (cd "$RUNNER_TEMP/saida" && sha256sum -- lavalink-2.7.1.jar verification-metadata.xml | tee SHA256SUMS)
+          {
+            echo "### lavalink-2.7.1.jar"
+            echo '```'
+            cat "$RUNNER_TEMP/saida/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload lyrics-plugin artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lyrics-plugin-2.7.1
+          path: |
+            ${{ runner.temp }}/saida/lavalink-2.7.1.jar
+            ${{ runner.temp }}/saida/verification-metadata.xml
+            ${{ runner.temp }}/saida/SHA256SUMS
+          if-no-files-found: error
