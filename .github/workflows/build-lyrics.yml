@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 30
     env:
       # A tag anotada 2.7.1 (objeto eed2813faff0ff6baf36630d27f933ed9666ddb1) aponta para 6482f213af9e9dcac8b851f9d719329b9af8ab43,
-      # que não compila (esqueceu protocol/Protocol.kt). O mantenedor corrigiu 7 minutos depois no commit abaixo, sem mover a tag.
+      # que não compila (esqueceu de tornar o range opcional em protocol/.../Protocol.kt). O mantenedor corrigiu 7 minutos depois no commit abaixo, sem mover a tag.
       # Os dois commits só diferem em Protocol.kt (conferido no passo "Conferir o commit").
       LYRICS_COMMIT: d0dfbb1385f528a335460d16c2dd9023de70baf5
       LYRICS_TAG_COMMIT: 6482f213af9e9dcac8b851f9d719329b9af8ab43
