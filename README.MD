@@ -6,16 +6,26 @@ Todos os artefatos possuem integridade auditada e verificada via checksum SHA-25
 
 ---
 
-## Componentes da Release 0.0.4
+## Componentes da Release 0.0.5
 
 | Arquivo | Versão / Commit | Origem / Upstream | Licença |
 | :--- | :--- | :--- | :--- |
 | `Lavalink.jar` | `4.2.2` | [lavalink-devs/Lavalink](https://github.com/lavalink-devs/Lavalink) | MIT |
 | `youtube-plugin-2be8e542d3f6f178e048dca565892684c2e40177.jar` | `2be8e54` | [lavalink-devs/youtube-source](https://github.com/lavalink-devs/youtube-source) | MIT |
 | `lavasrc-plugin-4.8.3.jar` | `4.8.3` | [topi314/LavaSrc](https://github.com/topi314/LavaSrc) | Apache-2.0 |
-| `lavalink-2.6.1.jar` | `2.6.1` | [DuncteBot/skybot-lavalink-plugin](https://github.com/DuncteBot/skybot-lavalink-plugin) | Apache-2.0 |
+| `lavalink-2.7.1.jar` (plugin de letras) | `2.7.1` (`d0dfbb1`) | [DRSchlaubi/lyrics.kt](https://github.com/DRSchlaubi/lyrics.kt) | MIT |
 | `soundy-plugin-1.1.0.jar` | `1.1.0` (`e2c5da8`) | [lowkwrs/soundy](https://github.com/lowkwrs/soundy) | MIT |
 | `application.yml` | `0.0.4` | Configuração oficial do servidor | GPL-2.0 |
+
+---
+
+## Compilação do plugin de letras
+
+O `lavalink-2.7.1.jar` é compilado do commit [`d0dfbb1385f528a335460d16c2dd9023de70baf5`](https://github.com/DRSchlaubi/lyrics.kt/commit/d0dfbb1385f528a335460d16c2dd9023de70baf5) de [`DRSchlaubi/lyrics.kt`](https://github.com/DRSchlaubi/lyrics.kt) (MIT).
+
+- **Por que não a tag**: a tag `2.7.1` aponta para [`6482f213`](https://github.com/DRSchlaubi/lyrics.kt/commit/6482f213af9e9dcac8b851f9d719329b9af8ab43), que não compila (esqueceu o `protocol`). O mantenedor corrigiu 7 minutos depois em `d0dfbb13`, sem mover a tag. A diferença é uma linha, `protocol/src/commonMain/kotlin/Protocol.kt:74` (`SerializableLongRange` vira `SerializableLongRange?`), e o workflow confere isso antes de compilar.
+- **Build**: [`build-lyrics.yml`](.github/workflows/build-lyrics.yml), Temurin 17, Gradle 8.13 com SHA-256 fixo e wrapper validado, sem JitPack, dependências verificadas por `verification-metadata.xml` (publicado na release) e reconstrução com verificação estrita.
+- **Reprodutível**: o JAR sai idêntico bit a bit entre execuções. SHA-256: `4d63a711fa43f0f8ee88006e63b03d24c571ff54ea73d25cba83453b172cbf51`.
 
 ---
 
